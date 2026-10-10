@@ -1,0 +1,280 @@
+@import "tailwindcss";
+
+/* ───────────────────────── Kinema design tokens (strictly monochrome) ───────────────────────── */
+:root {
+  --bg: #050506;
+  --fg: #f5f5f7;
+  --fg-2: rgba(245, 245, 247, 0.66);
+  --fg-3: rgba(245, 245, 247, 0.42);
+  --stroke: rgba(255, 255, 255, 0.12);
+  --stroke-strong: rgba(255, 255, 255, 0.24);
+  --glass-top: rgba(255, 255, 255, 0.095);
+  --glass-bottom: rgba(255, 255, 255, 0.03);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-stroke: var(--stroke);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-serif), "Times New Roman", serif;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+}
+
+/* film grain over everything (cheap: one fixed layer, no animation) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+@layer components {
+/* ───────────────────────── Glass surfaces ───────────────────────── */
+.glass {
+  position: relative;
+  background: linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
+  backdrop-filter: blur(28px) saturate(1.7);
+  border: 1px solid var(--stroke);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+    0 24px 70px -24px rgba(0, 0, 0, 0.85);
+}
+/* For surfaces that a poster fully covers: identical look (border + shadow), but no backdrop blur to compute. */
+.glass-flat {
+  backdrop-filter: none;
+}
+.glass-strong {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(40px) saturate(1.8);
+  border-color: var(--stroke-strong);
+}
+.glass-pill {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px) saturate(1.6);
+  border: 1px solid var(--stroke);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* specular highlight that follows the pointer (--mx/--my are set from JS) */
+.spec::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease-out);
+  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.16), transparent 62%);
+}
+.spec:hover::after,
+.spec:focus-within::after {
+  opacity: 1;
+}
+
+/* Wordmark: unchanged at rest; a glint sweeps across it while the logo is hovered/focused or Kinema is working. */
+.wordmark {
+  display: inline-block;
+}
+.logo-group:hover .wordmark,
+a:focus-visible > .logo-group .wordmark,
+.wordmark[data-busy="true"] {
+  color: transparent;
+  background-image: linear-gradient(100deg, rgba(245, 245, 247, 0.72) 36%, #ffffff 50%, rgba(245, 245, 247, 0.72) 64%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.3));
+  animation: wordmark-sheen 1.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-group:hover .wordmark,
+  a:focus-visible > .logo-group .wordmark,
+  .wordmark[data-busy="true"] {
+    color: inherit;
+    background: none;
+    filter: none;
+    animation: none;
+  }
+}
+
+/* ───────────────────────── Interaction polish ───────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.press {
+  transition: transform 0.25s var(--ease-spring), background-color 0.25s, border-color 0.25s, opacity 0.25s;
+}
+.press:hover {
+  transform: translateY(-1px);
+}
+.press:active {
+  transform: scale(0.96);
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.fade-mask-x {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 56px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 56px), transparent 100%);
+}
+
+/* range slider, monochrome */
+input[type="range"].kinema-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"].kinema-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fff var(--fill, 50%), rgba(255, 255, 255, 0.16) var(--fill, 50%));
+}
+input[type="range"].kinema-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+input[type="range"].kinema-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: #fff;
+}
+input[type="range"].kinema-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 0 5px rgba(255, 255, 255, 0.12);
+  transition: transform 0.2s var(--ease-spring);
+}
+input[type="range"].kinema-range:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+input[type="range"].kinema-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+}
+
+/* ───────────────────────── Keyframes (transform/opacity only → 60fps) ───────────────────────── */
+@keyframes drift-a {
+  0%, 100% { transform: translate3d(-8%, -6%, 0) scale(1); }
+  50% { transform: translate3d(10%, 8%, 0) scale(1.18); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate3d(8%, 10%, 0) scale(1.1); }
+  50% { transform: translate3d(-12%, -4%, 0) scale(0.92); }
+}
+@keyframes drift-c {
+  0%, 100% { transform: translate3d(0, 8%, 0) scale(0.95); }
+  50% { transform: translate3d(6%, -10%, 0) scale(1.15); }
+}
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes sheet-in { from { opacity: 0; scale: 0.95; filter: blur(10px); } }
+@keyframes drawer-in { from { opacity: 0.4; translate: 48px 0; } }
+@keyframes pop-in { from { opacity: 0; scale: 0.94; translate: 0 -6px; } }
+@keyframes wordmark-sheen {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes word-in {
+  from { opacity: 0; filter: blur(8px); transform: translateY(6px); }
+  to { opacity: 1; filter: blur(0); transform: none; }
+}
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@layer components {
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+.word-reveal > span {
+  display: inline-block;
+  opacity: 0;
+  animation: word-in 0.55s var(--ease-out) forwards;
+}
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .word-reveal > span { opacity: 1; }
+}

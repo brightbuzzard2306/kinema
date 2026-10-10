@@ -1,0 +1,34 @@
+# secrets
+.env
+.env.*
+!.env.example
+frontend/.env.local
+
+# python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# data & caches (re-creatable: `python -m scripts.setup_data`)
+data/ml-latest-small.zip
+data/ml-latest-small/
+data/cache/
+
+# node / next
+node_modules/
+frontend/.next/
+frontend/out/
+*.tsbuildinfo
+next-env.d.ts
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+
+# local tooling (machine-specific paths)
+.claude/
+
+# container build leftovers
+*.log
