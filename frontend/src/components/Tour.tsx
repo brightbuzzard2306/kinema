@@ -9,13 +9,16 @@ import { finishTour, goToStep, loadTour, TOUR_STEPS, useTour } from "@/lib/tour"
 import { cn } from "@/lib/utils";
 
 const STEPS = [
-  { target: "prompt", title: "Say what you're in the mood for", body: "Type a mood, a genre or a film you loved, or tap an example. Press Enter to send.", cta: "Got it" },
-  { target: "card", title: "Every pick is a real MovieLens film", body: "Hover a card to see why it was chosen. The thumbs teach Kinema your taste, and a film you dislike never comes back.", cta: "Next" },
+  { target: "prompt", title: "Say what you're in the mood for", body: "Type a mood, a genre or a film you loved, then press Enter. Or let me run an example so you can see how it works.", cta: "Show me" },
+  { target: "card", title: "Every pick is a real MovieLens film", body: "Every card says why it was chosen. The thumbs teach Kinema your taste, and a film you dislike never comes back.", cta: "Next" },
   { target: "why", title: "See exactly why", body: "The sparkle button opens the score breakdown: how similar content, people like you and overall quality each pushed this film up.", cta: "Next" },
   { target: "compare", title: "Compare the algorithms", body: "Rank the same request with Popular, Content, People like you and Hybrid side by side.", cta: "Done" },
 ] as const;
 
 const PAD = 8;
+const EXAMPLE = "A lighthearted comedy for tonight";
+/** Shown when the current step points at results but there are none on screen: never leave the tour hanging. */
+const BRIDGE = { title: "Let's get some picks first", body: "The next steps point at real results. I'll ask for an example so you can see them.", cta: "Show me" };
 
 /** The newest visible element for a tour target (the latest results are the last in the DOM). */
 function findTarget(name: string): HTMLElement | null {
@@ -35,9 +38,10 @@ function findTarget(name: string): HTMLElement | null {
 export function Tour() {
   const tour = useTour();
   const reduce = useReducedMotion();
-  const { messages } = useWorkspace();
+  const { messages, busy, send } = useWorkspace();
   const [armed, setArmed] = useState(false);
-  const [found, setFound] = useState<{ step: number; ok: boolean }>({ step: -1, ok: false });
+  const [found, setFound] = useState<{ step: number; ok: boolean; bridge: boolean }>({ step: -1, ok: false, bridge: false });
+  const busyRef = useRef(false);
   const spotRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const settling = useRef(false);
@@ -51,6 +55,9 @@ export function Tour() {
   const active = armed && !tour.loading && !tour.done;
   const step = STEPS[Math.min(tour.step, TOUR_STEPS - 1)];
   const hasMessages = messages.length > 0;
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   // the user has already started chatting: step 1 ("say what you want") is moot
   useEffect(() => {
@@ -62,16 +69,22 @@ export function Tour() {
     if (!active) return;
     let raf = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let lastOk = false;
+    let lastKey = "";
     settling.current = true;
     const settle = setTimeout(() => (settling.current = false), 650);
 
     const tick = () => {
-      const el = findTarget(step.target);
+      let el = findTarget(step.target);
+      let bridge = false;
+      if (!el && step.target !== "prompt" && !busyRef.current) {
+        el = findTarget("prompt"); // no results to point at: point at the prompt and offer to create some
+        bridge = !!el;
+      }
       const ok = !!el;
-      if (ok !== lastOk) {
-        lastOk = ok;
-        setFound({ step: tour.step, ok });
+      const key = `${ok}:${bridge}`;
+      if (key !== lastKey) {
+        lastKey = key;
+        setFound({ step: tour.step, ok, bridge });
         if (el) {
           const r = el.getBoundingClientRect();
           if (r.top < 90 || r.bottom > window.innerHeight - 120) el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
@@ -88,9 +101,11 @@ export function Tour() {
         const ease = settling.current && !reduce ? "0.5s cubic-bezier(0.22,1,0.36,1)" : "none";
         spot.style.transition = `transform ${ease}, width ${ease}, height ${ease}`;
         card.style.transition = `transform ${ease}`;
-        spot.style.transform = `translate3d(${r.left - PAD}px, ${r.top - PAD}px, 0)`;
+        const top = Math.max(r.top - PAD, 6); // a target taller than the screen is outlined only where it is visible
+        const bottom = Math.min(r.bottom + PAD, vh - 6);
+        spot.style.transform = `translate3d(${r.left - PAD}px, ${top}px, 0)`;
         spot.style.width = `${r.width + PAD * 2}px`;
-        spot.style.height = `${r.height + PAD * 2}px`;
+        spot.style.height = `${Math.max(bottom - top, 0)}px`;
         const below = r.bottom + PAD + 14;
         const above = r.top - PAD - 14 - ch;
         const y = below + ch + 12 <= vh ? below : above >= 12 ? above : Math.max(12, vh - ch - 16);
@@ -120,6 +135,16 @@ export function Tour() {
   }, [active]);
 
   const visible = active && found.step === tour.step && found.ok;
+  const view = found.bridge ? BRIDGE : step;
+  const runExample = tour.step === 0 || found.bridge;
+  const onNext = () => {
+    if (runExample) {
+      if (tour.step === 0) goToStep(1);
+      busyRef.current = true; // so the tour doesn't flash its fallback while the request starts
+      void send(EXAMPLE); // the next step appears by itself once the picks arrive
+    } else if (tour.step >= TOUR_STEPS - 1) finishTour();
+    else goToStep(tour.step + 1);
+  };
   if (!active || typeof document === "undefined") return null;
 
   return createPortal(
@@ -139,7 +164,7 @@ export function Tour() {
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
-            key={tour.step}
+            key={`${tour.step}${found.bridge ? "b" : ""}`}
             initial={reduce ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? undefined : { opacity: 0, y: -6 }}
@@ -148,9 +173,9 @@ export function Tour() {
             <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-white/45">
               Quick tour · {tour.step + 1} of {TOUR_STEPS}
             </p>
-            <h3 className="mt-2 font-display text-[1.65rem] leading-[1.05]">{step.title}</h3>
+            <h3 className="mt-2 font-display text-[1.65rem] leading-[1.05]">{view.title}</h3>
             <p id="tour-body" className="mt-2 text-[13.5px] leading-relaxed text-white/65">
-              {step.body}
+              {view.body}
             </p>
           </motion.div>
         </AnimatePresence>
@@ -166,10 +191,11 @@ export function Tour() {
           </button>
           <button
             type="button"
-            onClick={() => (tour.step >= TOUR_STEPS - 1 ? finishTour() : goToStep(tour.step + 1))}
-            className="press flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[12.5px] font-medium text-black"
+            onClick={onNext}
+            disabled={busy && runExample}
+            className="press flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[12.5px] font-medium text-black disabled:opacity-50"
           >
-            {step.cta} {tour.step < TOUR_STEPS - 1 && <ArrowRight className="h-3.5 w-3.5" aria-hidden />}
+            {view.cta} {(tour.step < TOUR_STEPS - 1 || runExample) && <ArrowRight className="h-3.5 w-3.5" aria-hidden />}
           </button>
         </div>
       </div>

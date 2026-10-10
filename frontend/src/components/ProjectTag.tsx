@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { useReducedMotion } from "motion/react";
+import { Info } from "lucide-react";
 import { AboutCard } from "./AboutCard";
 import DecryptedText from "./bits/DecryptedText";
 import { useWorkspaceOptional } from "./WorkspaceProvider";
@@ -33,7 +34,7 @@ function stageText(stage: NonNullable<Stage>): string {
  *  - at rest it alternates between the project name and live dataset numbers, re-scrambling every few seconds;
  *  - while a request is running it shows what the server is REALLY doing (reading → ranking → writing);
  *  - clicking it opens the About card. Reduced-motion users get plain, non-animated text.
- * Hidden on phones (no room); the same credit is in the page footer.
+ * A visible pill at every width: icon-only on phones (no room for the text), the live text from `md` up.
  */
 export function ProjectTag({ className }: { className?: string }) {
   const reduce = useReducedMotion();
@@ -63,32 +64,37 @@ export function ProjectTag({ className }: { className?: string }) {
         <button
           type="button"
           aria-label="About this project: RS Mini Project"
+          title="About this project"
           className={cn(
-            "hidden w-[15rem] items-center gap-2.5 overflow-hidden whitespace-nowrap rounded-full border-l border-white/12 py-1 pl-4 text-left lg:w-[19.5rem] md:flex",
+            "glass-pill press group/about flex h-9 shrink-0 items-center gap-2.5 overflow-hidden whitespace-nowrap rounded-full px-2.5 text-left",
+            "md:w-[15.5rem] md:pl-3.5 md:pr-3 lg:w-[20rem]",
             className,
           )}
         >
-          <span className="relative grid h-2 w-2 shrink-0 place-items-center" aria-hidden>
+          <span className="relative hidden h-2 w-2 shrink-0 place-items-center md:grid" aria-hidden>
             <span className="absolute inset-0 rounded-full bg-white" />
             {!reduce && <span className="absolute inset-0 rounded-full bg-white" style={{ animation: "pulse-ring 2.6s ease-out infinite" }} />}
           </span>
-          {reduce ? (
-            <span className="font-mono text-[11px] tracking-[0.24em] text-white/70">{shown}</span>
-          ) : (
-            <DecryptedText
-              key={`${shown}|${stage ? "live" : round}`}
-              text={shown}
-              animateOn="inViewHover"
-              sequential
-              revealDirection="start"
-              speed={38}
-              maxIterations={12}
-              characters="01ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*"
-              parentClassName="font-mono text-[11px] tracking-[0.24em] whitespace-nowrap"
-              className="text-white/75"
-              encryptedClassName="text-white/25"
-            />
-          )}
+          <span className="hidden min-w-0 flex-1 md:block">
+            {reduce ? (
+              <span className="font-mono text-[11px] tracking-[0.22em] text-white/85">{shown}</span>
+            ) : (
+              <DecryptedText
+                key={`${shown}|${stage ? "live" : round}`}
+                text={shown}
+                animateOn="inViewHover"
+                sequential
+                revealDirection="start"
+                speed={38}
+                maxIterations={12}
+                characters="01ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*"
+                parentClassName="font-mono text-[11px] tracking-[0.22em] whitespace-nowrap"
+                className="text-white/90"
+                encryptedClassName="text-white/30"
+              />
+            )}
+          </span>
+          <Info className="h-[17px] w-[17px] shrink-0 text-white/70 transition-colors group-hover/about:text-white" strokeWidth={1.9} aria-hidden />
         </button>
       </Popover.Trigger>
       <AboutCard />

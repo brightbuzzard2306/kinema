@@ -26,7 +26,7 @@ export function AboutCard() {
         align="start"
         sideOffset={14}
         collisionPadding={12}
-        className="glass glass-strong z-50 w-[min(92vw,420px)] rounded-[28px] p-5 text-white outline-none data-[state=open]:animate-[pop-in_0.25s_var(--ease-out)] sm:p-6"
+        className="glass glass-strong z-50 max-h-[var(--radix-popover-content-available-height)] w-[min(92vw,420px)] overflow-y-auto overscroll-contain rounded-[28px] p-5 text-white outline-none data-[state=open]:animate-[pop-in_0.25s_var(--ease-out)] sm:p-6"
       >
         <p className="font-mono text-[10.5px] uppercase tracking-[0.24em] text-white/45">RS Mini Project</p>
         <h2 className="mt-1.5 font-display text-[2rem] leading-none">A conversational movie recommender</h2>
