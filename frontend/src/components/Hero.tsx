@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { BRAND } from "@/lib/brand";
 import { creditLine } from "@/lib/credit";
 import { openProject } from "@/lib/project";
+import { SHINE_TIMING } from "@/lib/shine";
 import { ProjectEyebrow } from "./ProjectEyebrow";
 import { cn } from "@/lib/utils";
 import type { MovieSummary } from "@/lib/types";
@@ -273,7 +274,16 @@ export function Hero() {
               transition={{ delay: 0.9, duration: 1 }}
               className="block italic"
             >
-              <ShinyText text="tonight?" color="rgba(245,245,247,0.42)" shineColor="#ffffff" speed={3.4} delay={0.6} shineWidth={0.35} />
+              {/* The glint paints only inside its own box, and italic glyphs overhang it (the "?" on the right, the descender of the "g" below):
+              pad the box outward, and cancel the padding with negative margins so nothing moves. */}
+              <ShinyText
+                text="tonight?"
+                color="rgba(245,245,247,0.42)"
+                shineColor="#ffffff"
+                {...SHINE_TIMING}
+                shineWidth={0.35}
+                className="-mx-[0.05em] -mb-[0.24em] -mt-[0.08em] px-[0.05em] pb-[0.24em] pr-[0.2em] pt-[0.08em] -mr-[0.2em]"
+              />
             </motion.span>
           </div>
 

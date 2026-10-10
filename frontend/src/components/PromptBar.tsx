@@ -5,6 +5,7 @@ import { useReducedMotion } from "motion/react";
 import { ArrowUp, Loader2 } from "lucide-react";
 import ShinyText from "./bits/ShinyText";
 import { useWorkspace } from "./WorkspaceProvider";
+import { SHINE_TIMING } from "@/lib/shine";
 import { cn } from "@/lib/utils";
 
 /** Glass prompt: Enter sends, Shift+Enter inserts a newline, "/" focuses it from anywhere. */
@@ -93,7 +94,7 @@ export function PromptBar({ large = false, autoFocus = false }: { large?: boolea
           />
           {!value && (
             <span aria-hidden className={cn("pointer-events-none absolute inset-x-0 top-0 select-none text-left leading-relaxed", large ? "py-3 text-[19px]" : "py-2.5 text-[16px]")}>
-              <ShinyText text={placeholder} color="rgba(245,245,247,0.4)" shineColor="#ffffff" speed={3.4} delay={0.9} shineWidth={90} softness={0.9} glow={0.4} disabled={!!reduce} />
+              <ShinyText text={placeholder} color="rgba(245,245,247,0.4)" shineColor="#ffffff" {...SHINE_TIMING} shineWidth={34} softness={0.9} glow={0.4} disabled={!!reduce} />
             </span>
           )}
         </div>

@@ -25,6 +25,10 @@ export interface ShinyTextProps {
   followPointer?: boolean;
   pauseOnHover?: boolean;
   disabled?: boolean;
+  /** LOCAL ADDITION: phase-lock looping sweeps to one shared clock. Instances with the same speed + delay then shine in step, even after a remount. */
+  sync?: boolean;
+  /** LOCAL ADDITION: how far (in % of the text width) the glint's centre travels beyond each edge. Equal `travel` = equal path, whatever the glint's width. */
+  travel?: number;
   className?: string;
   style?: CSSProperties;
 }
@@ -46,6 +50,8 @@ interface Settings {
   followPointer: boolean;
   pauseOnHover: boolean;
   disabled: boolean;
+  sync: boolean;
+  travel?: number;
 }
 
 const EASINGS: Record<Easing, (t: number) => number> = {
@@ -106,6 +112,8 @@ const ShinyText = ({
   followPointer = false,
   pauseOnHover = false,
   disabled = false,
+  sync = false,
+  travel,
   className = '',
   style
 }: ShinyTextProps) => {
@@ -131,7 +139,9 @@ const ShinyText = ({
     yoyo,
     followPointer,
     pauseOnHover,
-    disabled
+    disabled,
+    sync,
+    travel
   };
 
   useEffect(() => {
@@ -169,6 +179,7 @@ const ShinyText = ({
 
     const extent = () => {
       const s = settingsRef.current!;
+      if (s.travel !== undefined) return clamp(s.travel, 0, 100);
       return s.shineWidth / 2 + (s.bands - 1) * s.shineWidth * 1.3 + 2;
     };
     const entry = () => (settingsRef.current!.sign > 0 ? -extent() : 100 + extent());
@@ -232,6 +243,20 @@ const ShinyText = ({
       state.duration = s.speed * 1000 * Math.max(0.15, Math.abs(to - from) / span);
     };
 
+    // LOCAL ADDITION (sync): every cycle (= speed + delay) starts at a multiple of the cycle length on the shared performance clock.
+    const cycleMs = () => (settingsRef.current!.speed + settingsRef.current!.delay) * 1000;
+    const alignedStart = (now: number) => {
+      const s = settingsRef.current!;
+      const c0 = Math.floor(now / cycleMs()) * cycleMs();
+      if (now - c0 < s.speed * 1000) {
+        sweep(entry(), exit(), now);
+        state.start = c0; // join the sweep already in progress
+      } else {
+        state.phase = 'wait';
+        state.resume = c0 + cycleMs(); // wait for the next shared cycle boundary
+      }
+    };
+
     const wake = () => {
       if (raf || !alive) return;
       window.clearTimeout(timer);
@@ -287,7 +312,7 @@ const ShinyText = ({
           return;
         }
         state.phase = 'wait';
-        state.resume = now + s.delay * 1000;
+        state.resume = s.sync && !s.yoyo ? Math.floor(now / cycleMs()) * cycleMs() + cycleMs() : now + s.delay * 1000;
       }
       if (state.phase === 'wait') {
         if (!state.visible) return;
@@ -299,6 +324,8 @@ const ShinyText = ({
         if (s.yoyo) {
           state.flip = !state.flip;
           sweep(state.flip ? exit() : entry(), state.flip ? entry() : exit(), now);
+        } else if (s.sync) {
+          alignedStart(now);
         } else {
           sweep(entry(), exit(), now);
         }
@@ -307,7 +334,8 @@ const ShinyText = ({
       }
       if (state.phase === 'idle' && s.trigger === 'loop' && !reduce && state.visible) {
         state.flip = false;
-        sweep(entry(), exit(), now);
+        if (s.sync && !s.yoyo) alignedStart(now);
+        else sweep(entry(), exit(), now);
         raf = requestAnimationFrame(tick);
       }
     };
