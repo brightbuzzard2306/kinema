@@ -29,6 +29,8 @@ export interface ShinyTextProps {
   sync?: boolean;
   /** LOCAL ADDITION: how far (in % of the text width) the glint's centre travels beyond each edge. Equal `travel` = equal path, whatever the glint's width. */
   travel?: number;
+  /** LOCAL ADDITION: fade the glint in and out over this fraction (0-0.5) of its path, so a wide glint never starts or ends half-lit on the text. */
+  edgeFade?: number;
   className?: string;
   style?: CSSProperties;
 }
@@ -52,6 +54,7 @@ interface Settings {
   disabled: boolean;
   sync: boolean;
   travel?: number;
+  edgeFade: number;
 }
 
 const EASINGS: Record<Easing, (t: number) => number> = {
@@ -114,6 +117,7 @@ const ShinyText = ({
   disabled = false,
   sync = false,
   travel,
+  edgeFade = 0,
   className = '',
   style
 }: ShinyTextProps) => {
@@ -141,7 +145,8 @@ const ShinyText = ({
     pauseOnHover,
     disabled,
     sync,
-    travel
+    travel,
+    edgeFade: clamp(edgeFade, 0, 0.5)
   };
 
   useEffect(() => {
@@ -192,9 +197,20 @@ const ShinyText = ({
       const core = half * (1 - s.softness);
       const fade = half - core;
       const stops: [number, number][] = [];
+      // LOCAL ADDITION (edgeFade): brightness envelope along the glint's path (0 at both ends, 1 in the middle)
+      let envelope = 1;
+      if (s.edgeFade > 0) {
+        const a = entry();
+        const along = clamp((pos - a) / (exit() - a || 1), 0, 1);
+        const ramp = (t: number) => {
+          const u = clamp(t / s.edgeFade, 0, 1);
+          return u * u * (3 - 2 * u);
+        };
+        envelope = ramp(along) * ramp(1 - along);
+      }
       for (let band = 0; band < s.bands; band++) {
         const center = pos - s.sign * band * s.shineWidth * 1.3;
-        const strength = 1 - band * 0.28;
+        const strength = (1 - band * 0.28) * envelope;
         for (const side of [-1, 1]) {
           for (const f of FALLOFF) {
             const at = center + side * (core + fade * (1 - f));
