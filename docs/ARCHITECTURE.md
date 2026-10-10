@@ -40,6 +40,10 @@ Browser (Next.js)  ──HTTP/JSON──▶  FastAPI  ──▶  ChatService ─
 
 `/chat/stream` runs the same `service.chat(...)` in a worker thread and passes it an `emit` callback; the events go through a queue to the HTTP response (`backend/app/streaming.py`). The picks are sent **before** the reply is written, so the cards appear ~2 s earlier while Claude is still framing the answer. This is deliberately *not* token streaming: Claude's reply is validated (grounded numbers, no invented titles) before it is shown, so showing half-written text would defeat that check. The browser client (`frontend/src/lib/stream.ts`) falls back to the plain endpoints if the stream cannot be opened, so a proxy that buffers or blocks SSE costs the animation, not the feature. Errors inside the stream are sent as a generic `error` event without internals.
 
+## Project dialog and team data (frontend)
+
+`ProjectDialog` (About + Team tabs) is opened from anywhere with `openProject("about" | "team")` (`src/lib/project.ts`, a tiny external store). Team content comes from `src/lib/team.ts`: placeholders by default, or a validated `NEXT_PUBLIC_TEAM` JSON list so names can stay out of the repository.
+
 ## Endpoints
 
 | Endpoint | Purpose |

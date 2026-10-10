@@ -71,7 +71,12 @@ Secrets (API keys, the access code) are typed into the dashboards by you; they a
    | `NEXT_PUBLIC_COURSE` | e.g. `Recommendation Systems · Mini Project` |
    | `NEXT_PUBLIC_GUIDE` | your guide's name |
 
-   (The last four are optional; blank means the credit line is hidden. These values are public by design.)
+   (The last four are optional; blank means placeholders are shown. These values are public by design.)
+
+   **Team members** (Project → Team tab): either edit `frontend/src/lib/team.ts` (names then live in the public repo), or add one more variable,
+   `NEXT_PUBLIC_TEAM`, whose value is a one-line JSON list, for example
+   `[{"name":"Asha Rao","role":"Backend & evaluation","detail":"Roll no. 21CS001"},{"name":"Ravi K","role":"Frontend","detail":"Roll no. 21CS002"}]`.
+   The file header of `team.ts` lists every option (photos, links).
 5. **Deploy**. When it finishes Vercel shows an address like `kinema-xxxx.vercel.app`.
 6. Go back to Render → your service → **Environment** → edit `FRONTEND_ORIGIN` and add that Vercel address:
    `https://kinema.co.in,https://www.kinema.co.in,https://kinema-xxxx.vercel.app`. Render restarts the service.

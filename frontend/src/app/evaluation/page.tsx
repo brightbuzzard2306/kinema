@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, FileWarning, RefreshCw } from "lucide-react";
+import { ArrowLeft, FileWarning, Info, RefreshCw } from "lucide-react";
 import { AppDock } from "@/components/AppDock";
 import { Backdrop } from "@/components/Backdrop";
 import CountUp from "@/components/bits/CountUp";
 import { Logo } from "@/components/Nav";
-import { ProjectTag } from "@/components/ProjectTag";
+import { ProjectDialog } from "@/components/ProjectDialog";
+import { openProject } from "@/lib/project";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { EvaluationReport } from "@/lib/types";
@@ -206,12 +207,15 @@ export default function EvaluationPage() {
     <>
       <Backdrop />
       <AppDock current="evaluation" />
+      <ProjectDialog />
       <main className="mx-auto max-w-5xl px-4 pb-24 pt-6 sm:px-6 sm:pt-8">
         <header className="flex items-center justify-between">
           <Link href="/" className="glass-pill press flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"><ArrowLeft className="h-4 w-4" /> Back to chat</Link>
           <div className="flex items-center gap-4">
             <Logo />
-            <ProjectTag />
+            <button type="button" onClick={() => openProject("about")} className="glass-pill press flex h-9 items-center gap-2 rounded-full px-3.5 text-[12.5px] text-white/85 hover:text-white">
+              <Info className="h-[17px] w-[17px]" aria-hidden /> Project
+            </button>
           </div>
         </header>
         <div className="mt-14 mb-10">

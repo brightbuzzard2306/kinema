@@ -9,7 +9,9 @@ import { Hero } from "./Hero";
 import { Tour } from "./Tour";
 import { Nav } from "./Nav";
 import { ProfileDrawer } from "./ProfileDrawer";
+import { ProjectDialog } from "./ProjectDialog";
 import { PromptBar } from "./PromptBar";
+import { StageChip } from "./StageChip";
 import { AccessScreen, FatalScreen, LoadingScreen, Toasts } from "./StatusScreens";
 import { WhySheet } from "./WhySheet";
 import { useWorkspace, WorkspaceProvider } from "./WorkspaceProvider";
@@ -49,6 +51,7 @@ function Shell() {
             <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-4 sm:px-6 sm:pb-6">
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black via-black/70 to-transparent" aria-hidden />
               <div className="relative mx-auto max-w-3xl">
+                <div className="absolute inset-x-0 -top-9"><StageChip /></div>
                 <PromptBar autoFocus />
               </div>
             </div>
@@ -56,6 +59,7 @@ function Shell() {
           <ProfileDrawer />
           <CompareSheet />
           <WhySheet />
+          <ProjectDialog />
           <Toasts />
           <Tour />
         </>

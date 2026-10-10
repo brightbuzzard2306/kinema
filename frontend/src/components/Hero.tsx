@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, Search, X } from "lucide-react";
+import { ArrowRight, Check, Search, Users, X } from "lucide-react";
 import BlurText from "./bits/BlurText";
 import LogoLoop from "./bits/LogoLoop";
 import Magnet from "./bits/Magnet";
@@ -15,6 +15,8 @@ import { useWorkspace } from "./WorkspaceProvider";
 import { api } from "@/lib/api";
 import { BRAND } from "@/lib/brand";
 import { creditLine } from "@/lib/credit";
+import { openProject } from "@/lib/project";
+import { ProjectEyebrow } from "./ProjectEyebrow";
 import { cn } from "@/lib/utils";
 import type { MovieSummary } from "@/lib/types";
 
@@ -244,9 +246,8 @@ function PosterTicker() {
 }
 
 export function Hero() {
-  const { send, health, busy, postersEnabled } = useWorkspace();
+  const { send, busy, postersEnabled } = useWorkspace();
   const reduce = useReducedMotion();
-  const movies = health?.dataset.movies;
 
   const rise = (delay: number) => ({
     initial: reduce ? false : { opacity: 0, y: 26, filter: "blur(12px)" },
@@ -259,15 +260,9 @@ export function Hero() {
       <HeroRays />
       <div className="relative mx-auto flex w-full flex-col items-center gap-16 px-4 pb-24 pt-32 sm:px-6 sm:pt-40">
         <div className="flex w-full max-w-3xl flex-col items-center text-center">
-          <motion.p {...rise(0.05)} className="glass-pill rounded-full px-4 py-1.5 text-[12px]">
-            <ShinyText
-              text={movies ? `${movies.toLocaleString()} films · ${health?.dataset.ratings.toLocaleString()} real ratings` : BRAND.tagline}
-              color="rgba(245,245,247,0.62)"
-              shineColor="#ffffff"
-              speed={4}
-              delay={1.5}
-            />
-          </motion.p>
+          <motion.div {...rise(0.05)}>
+            <ProjectEyebrow />
+          </motion.div>
 
           <h1 className="sr-only">What are we watching tonight?</h1>
           <div aria-hidden className="mt-7 font-display text-[clamp(3.2rem,9vw,6.4rem)] leading-[0.94] tracking-[-0.02em]">
@@ -310,11 +305,16 @@ export function Hero() {
         <motion.div {...rise(0.9)} className="w-full">
           <TasteStarter />
         </motion.div>
-        <p className="max-w-xl text-center text-[11.5px] leading-relaxed text-white/30">
-          {creditLine ? `${creditLine}. ` : "RS Mini Project: a Recommendation Systems course project. "}
-          Ratings and tags: MovieLens (GroupLens Research).
-          {postersEnabled && " Posters: TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB."}
-        </p>
+        <div className="-mt-6 flex flex-col items-center gap-4">
+          <button type="button" onClick={() => openProject("team")} className="glass-pill press flex items-center gap-2 rounded-full px-4 py-2 text-[12.5px] text-white/75 hover:border-white/40 hover:text-white">
+            <Users className="h-3.5 w-3.5" aria-hidden /> Meet the team
+          </button>
+          <p className="max-w-xl text-center text-[11.5px] leading-relaxed text-white/30">
+            {creditLine ? `${creditLine}. ` : "RS Mini Project: a Recommendation Systems course project. "}
+            Ratings and tags: MovieLens (GroupLens Research).
+            {postersEnabled && " Posters: TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB."}
+          </p>
+        </div>
       </div>
     </div>
   );

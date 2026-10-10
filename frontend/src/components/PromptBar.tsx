@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useReducedMotion } from "motion/react";
 import { ArrowUp, Loader2 } from "lucide-react";
+import ShinyText from "./bits/ShinyText";
 import { useWorkspace } from "./WorkspaceProvider";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +13,8 @@ export function PromptBar({ large = false, autoFocus = false }: { large?: boolea
   const [value, setValue] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const max = meta?.max_message_chars ?? 800;
+  const reduce = useReducedMotion();
+  const placeholder = large ? "Tell me what you're in the mood for…" : "Ask for anything — a mood, a genre, a movie you loved";
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -66,25 +70,33 @@ export function PromptBar({ large = false, autoFocus = false }: { large?: boolea
         <label htmlFor="prompt" className="sr-only">
           Describe what you want to watch
         </label>
-        <textarea
-          id="prompt"
-          ref={ref}
-          rows={1}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              void submit();
-            }
-          }}
-          placeholder={large ? "Tell me what you're in the mood for…" : "Ask for anything — a mood, a genre, a movie you loved"}
-          aria-describedby="prompt-hint"
-          className={cn(
-            "max-h-44 min-h-[28px] flex-1 resize-none bg-transparent leading-relaxed text-white placeholder:text-white/40 focus:outline-none",
-            large ? "py-3 text-[19px]" : "py-2.5 text-[16px]",
+        <div className="relative min-w-0 flex-1">
+          <textarea
+            id="prompt"
+            ref={ref}
+            rows={1}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                void submit();
+              }
+            }}
+            placeholder={placeholder}
+            aria-describedby="prompt-hint"
+            className={cn(
+              // the real placeholder stays (screen readers, sizing) but is invisible: the shiny copy below is what people see
+              "block max-h-44 min-h-[28px] w-full resize-none bg-transparent leading-relaxed text-white placeholder:text-transparent focus:outline-none",
+              large ? "py-3 text-[19px]" : "py-2.5 text-[16px]",
+            )}
+          />
+          {!value && (
+            <span aria-hidden className={cn("pointer-events-none absolute inset-x-0 top-0 select-none text-left leading-relaxed", large ? "py-3 text-[19px]" : "py-2.5 text-[16px]")}>
+              <ShinyText text={placeholder} color="rgba(245,245,247,0.4)" shineColor="#ffffff" speed={3.4} delay={0.9} shineWidth={90} softness={0.9} glow={0.4} disabled={!!reduce} />
+            </span>
           )}
-        />
+        </div>
         <div className="flex items-center gap-2 pb-0.5">
           {value.length > max * 0.8 && (
             <span className={cn("font-mono text-[11px]", over ? "text-white" : "text-white/40")} aria-live="polite">

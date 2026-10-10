@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
-import { BarChart3, CircleHelp, Columns3, Plus, SlidersHorizontal } from "lucide-react";
+import { BarChart3, Columns3, Info, Plus, SlidersHorizontal } from "lucide-react";
 import { Logo } from "./Logo";
-import { ProjectTag } from "./ProjectTag";
 import { useWorkspace } from "./WorkspaceProvider";
 import { BRAND } from "@/lib/brand";
-import { restartTour } from "@/lib/tour";
+import { openProject, useProject } from "@/lib/project";
 import { cn } from "@/lib/utils";
 
 function ModeBadge() {
@@ -99,22 +98,22 @@ function NavAction({
 
 export function Nav({ compact = false }: { compact?: boolean }) {
   const { profile, setProfileOpen, profileOpen, setCompareOpen, compareOpen, newChat, messages, busy } = useWorkspace();
+  const project = useProject();
   const prefs = profile ? profile.genres.length + profile.excluded_genres.length + profile.liked_ids.length + profile.disliked_ids.length : 0;
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3 pt-3 sm:px-6 sm:pt-5">
       <nav aria-label="Primary" className="glass pointer-events-auto flex w-full max-w-6xl items-center justify-between gap-3 rounded-full py-2 pl-5 pr-2">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div className="flex min-w-0 items-center">
           <Link href="/" aria-label={`${BRAND.name} home`} className="shrink-0 rounded-full">
             <Logo />
           </Link>
-          <ProjectTag />
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {!compact && <NavAction icon={Columns3} label="Compare" active={compareOpen} onClick={() => setCompareOpen(true)} className="hidden sm:flex" />}
           {!compact && <NavAction icon={SlidersHorizontal} label="Taste" active={profileOpen} badge={prefs} onClick={() => setProfileOpen(true)} />}
           <NavAction icon={BarChart3} label="Evaluation" href="/evaluation" className="hidden sm:flex" />
-          {!compact && <NavAction icon={CircleHelp} label="Tour" onClick={restartTour} className="hidden sm:flex" />}
+          <NavAction icon={Info} label="Project" active={project.open} onClick={() => openProject("about")} />
           {!compact && <ModeBadge />}
           {!compact && messages.length > 0 && (
             <button
