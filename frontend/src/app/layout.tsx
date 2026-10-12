@@ -15,6 +15,8 @@ const display = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: `${BRAND.name} — ${BRAND.tagline.toLowerCase()}`,
+  // a private, access-code site: ask search engines not to list it
+  robots: { index: false, follow: false },
   description:
     "Tell Kinema what you feel like watching. A hybrid recommender built on MovieLens finds the films; Claude helps you talk it through.",
 };
