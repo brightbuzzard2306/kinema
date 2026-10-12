@@ -160,9 +160,13 @@ function TeamPanel() {
       <motion.div {...rise(TEAM.length)} className="mt-3">
         <SpotlightCard theme="dark" intensity={0.16} spotlightSize={320} borderGlow={0.6} className="!rounded-[26px] !p-5" style={CARD_SURFACE}>
           <div className="flex items-center gap-4">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/20 bg-white/[0.06]">
-              <GraduationCap className="h-5 w-5 text-white/80" aria-hidden />
-            </span>
+            {PROJECT_INFO.guidePhoto ? (
+              <Avatar member={{ name: PROJECT_INFO.guide, role: "", photo: PROJECT_INFO.guidePhoto }} />
+            ) : (
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-white/20 bg-white/[0.06]">
+                <GraduationCap className="h-5 w-5 text-white/80" aria-hidden />
+              </span>
+            )}
             <div className="min-w-0">
               <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-white/45">Project guide</p>
               <p className="mt-1 font-display text-[1.6rem] leading-[1.05]">

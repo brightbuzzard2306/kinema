@@ -1,15 +1,18 @@
 /**
- * WHO MADE THIS: the data behind the "Project → Team" tab.
+ * WHO MADE THIS: the data behind the "Project -> Team" tab (and the page footer).
  *
- * Right now everything below is PLACEHOLDER text. To fill it in, pick ONE way:
+ * The defaults below are the real team, copied from the project cover page. To change them, pick ONE way:
  *
- *  A) Edit `PLACEHOLDER_TEAM` / `PLACEHOLDER_INFO` below. Simple, but the names then live in the (public) GitHub repo.
- *  B) Keep names out of the repo: set these in frontend/.env.local (and in Vercel -> Settings -> Environment Variables):
+ *  A) Edit `DEFAULT_TEAM` / `DEFAULT_INFO` below. Simple, but the details then live in the (public) GitHub repo.
+ *  B) Override from the environment (frontend/.env.local, and Vercel -> Settings -> Environment Variables):
  *       NEXT_PUBLIC_TEAM='[{"name":"Asha Rao","role":"Backend & evaluation","detail":"Roll no. 21CS001","links":[{"label":"GitHub","href":"https://github.com/..."}]}]'
  *       NEXT_PUBLIC_COLLEGE, NEXT_PUBLIC_COURSE, NEXT_PUBLIC_GUIDE   (plain text each)
- *     Environment values are read when the site is built, so redeploy after changing them. They are public by design.
+ *     Environment values are read when the site is built, so redeploy after changing them.
  *
- * Photos are optional: put a square image in frontend/public/team/ and set `photo: "/team/asha.jpg"`. Without one, a monogram is shown.
+ * NOTE: the site's pages and scripts are served to anyone who opens the address (the access code protects the API, not these files),
+ * so whatever is written here can be read by visitors. Only put in what you are happy to show publicly.
+ *
+ * Photos are optional: put a square image in frontend/public/team/ and set `photo: "/team/name.jpg"`. Without one, a monogram is shown.
  * Add or remove members freely: the layout adapts to any number.
  */
 import { CREDIT } from "./credit";
@@ -32,22 +35,25 @@ export interface ProjectInfo {
   college: string;
   course: string;
   guide: string;
-  /** e.g. "Academic year 2026-27" (optional) */
+  /** e.g. "Semester V · AI & Data Science" (optional) */
   session?: string;
+  /** e.g. "/team/guide.jpg" in frontend/public/team (optional) */
+  guidePhoto?: string;
 }
 
-const PLACEHOLDER_TEAM: TeamMember[] = [
-  { name: "Team member 1", role: "Role · what they built", detail: "Roll no. / ID" },
-  { name: "Team member 2", role: "Role · what they built", detail: "Roll no. / ID" },
-  { name: "Team member 3", role: "Role · what they built", detail: "Roll no. / ID" },
-  { name: "Team member 4", role: "Role · what they built", detail: "Roll no. / ID" },
+const DEFAULT_TEAM: TeamMember[] = [
+  { name: "Tisha Khatri", role: "AI & Data Science · Semester V", detail: "Roll no. S069 · SAP ID 60018250013" },
+  { name: "Peher Sanghvi", role: "AI & Data Science · Semester V", detail: "Roll no. S067 · SAP ID 60018250010" },
+  { name: "Moksh Mathukia", role: "AI & Data Science · Semester V", detail: "Roll no. S028 · SAP ID 60018240050" },
+  { name: "Mantra Patel", role: "AI & Data Science · Semester V", detail: "Roll no. S035 · SAP ID 60018240086" },
 ];
 
-const PLACEHOLDER_INFO: ProjectInfo = {
-  college: "Your college name",
-  course: "Recommendation Systems · Mini Project",
-  guide: "Guide's name",
-  session: "Academic year 20XX-XX",
+const DEFAULT_INFO: ProjectInfo = {
+  college: "Dwarkadas J. Sanghvi College of Engineering",
+  course: "Recommendation Systems Laboratory (DJS23SPE301L)",
+  guide: "Prof. Dashrath Kale",
+  session: "Semester V · AI & Data Science",
+  guidePhoto: "/team/guide.jpg",
 };
 
 const text = (v: unknown, max = 120): string | undefined => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
@@ -79,15 +85,21 @@ function parseTeam(raw: string | undefined): TeamMember[] | null {
 
 const fromEnv = parseTeam(process.env.NEXT_PUBLIC_TEAM);
 
-export const TEAM: TeamMember[] = fromEnv ?? PLACEHOLDER_TEAM;
+export const TEAM: TeamMember[] = fromEnv ?? DEFAULT_TEAM;
 export const PROJECT_INFO: ProjectInfo = {
-  college: CREDIT.college || PLACEHOLDER_INFO.college,
-  course: CREDIT.course || PLACEHOLDER_INFO.course,
-  guide: CREDIT.guide || PLACEHOLDER_INFO.guide,
-  session: PLACEHOLDER_INFO.session,
+  college: CREDIT.college || DEFAULT_INFO.college,
+  course: CREDIT.course || DEFAULT_INFO.course,
+  guide: CREDIT.guide || DEFAULT_INFO.guide,
+  session: DEFAULT_INFO.session,
+  // the bundled photo belongs to the default guide: don't show it next to a different name set through the environment
+  guidePhoto: CREDIT.guide && CREDIT.guide !== DEFAULT_INFO.guide ? undefined : DEFAULT_INFO.guidePhoto,
 };
-/** True while any of the visible team text is still the placeholder (drives the dev-only "fill me in" hint). */
-export const TEAM_IS_PLACEHOLDER = !fromEnv || !CREDIT.college || !CREDIT.guide;
+/** True while any member still has the generic "Team member N" placeholder name (drives the dev-only "fill me in" hint). */
+export const TEAM_IS_PLACEHOLDER = TEAM.some((m) => /^team member\b/i.test(m.name));
+
+const joinNames = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : (names[0] ?? ""));
+/** One line for the page footer, e.g. "Made by A, B and C · Guide: Prof. X". */
+export const teamCreditLine = TEAM_IS_PLACEHOLDER ? "" : `Made by ${joinNames(TEAM.map((m) => m.name))} · Guide: ${PROJECT_INFO.guide}`;
 
 export const initials = (name: string) =>
   name

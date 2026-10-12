@@ -71,7 +71,8 @@ Secrets (API keys, the access code) are typed into the dashboards by you; they a
    | `NEXT_PUBLIC_COURSE` | e.g. `Recommendation Systems · Mini Project` |
    | `NEXT_PUBLIC_GUIDE` | your guide's name |
 
-   (The last four are optional; blank means placeholders are shown. These values are public by design.)
+   (The last four are optional; blank means the built-in defaults from `frontend/src/lib/team.ts` are used, which are now the real team.
+   Whatever is in that file or these variables can be read by anyone who opens the site, because the access code protects the API, not the page files.)
 
    **Team members** (Project → Team tab): either edit `frontend/src/lib/team.ts` (names then live in the public repo), or add one more variable,
    `NEXT_PUBLIC_TEAM`, whose value is a one-line JSON list, for example

@@ -17,6 +17,7 @@ import { BRAND } from "@/lib/brand";
 import { creditLine } from "@/lib/credit";
 import { openProject } from "@/lib/project";
 import { SHINE_TIMING } from "@/lib/shine";
+import { teamCreditLine } from "@/lib/team";
 import { ProjectEyebrow } from "./ProjectEyebrow";
 import { cn } from "@/lib/utils";
 import type { MovieSummary } from "@/lib/types";
@@ -320,7 +321,7 @@ export function Hero() {
             <Users className="h-3.5 w-3.5" aria-hidden /> Meet the team
           </button>
           <p className="max-w-xl text-center text-[11.5px] leading-relaxed text-white/30">
-            {creditLine ? `${creditLine}. ` : "RS Mini Project: a Recommendation Systems course project. "}
+            {creditLine ? `${creditLine}. ` : teamCreditLine ? `${teamCreditLine}. ` : "RS Mini Project: a Recommendation Systems course project. "}
             Ratings and tags: MovieLens (GroupLens Research).
             {postersEnabled && " Posters: TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB."}
           </p>
