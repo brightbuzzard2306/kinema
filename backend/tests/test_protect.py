@@ -9,11 +9,12 @@ from pydantic import SecretStr
 
 from app.llm import ClaudeService, LLMUnavailable
 from app.main import build_state, create_app
-from app.protect import DailyBudget, SlidingWindow, codes_match
+from app.protect import DailyBudget, SlidingWindow, codes_match, derive_token
 
 from .test_nlu_and_llm import GENRES, fake_client, reply, settings_with_key
 
 CODE = "open-sesame-42"
+TOKEN = derive_token(CODE)  # what the browser sends after /access/verify accepted the code
 SID = "protect-session-01"
 
 
@@ -42,7 +43,8 @@ def test_protected_routes_need_the_code(settings, path):
         r = c.get(path)
         assert r.status_code == 401 and r.json()["error"]["code"] == "access_denied"
         assert c.get(path, headers={"X-Access-Code": "nope"}).status_code == 401
-        assert c.get(path, headers={"X-Access-Code": CODE}).status_code != 401
+        assert c.get(path, headers={"X-Access-Code": TOKEN}).status_code != 401
+        assert c.get(path, headers={"X-Access-Code": CODE}).status_code == 401  # the raw code is NOT accepted: guessing it is only possible on /access/verify
 
 
 def test_chat_and_streams_are_locked_without_the_code(settings):
@@ -50,7 +52,7 @@ def test_chat_and_streams_are_locked_without_the_code(settings):
         for path in ("/chat", "/chat/stream", "/recommend", "/recommend/stream", "/compare"):
             r = c.post(path, json={"session_id": SID, "message": "hi"})
             assert r.status_code == 401, path
-        ok = c.post("/chat", json={"session_id": SID, "message": "a comedy"}, headers={"X-Access-Code": CODE})
+        ok = c.post("/chat", json={"session_id": SID, "message": "a comedy"}, headers={"X-Access-Code": TOKEN})
         assert ok.status_code == 200
 
 
@@ -62,11 +64,93 @@ def test_docs_are_not_public_when_locked(settings):
 
 def test_verify_endpoint_and_lockout_after_wrong_guesses(settings):
     with locked_client(settings) as c:
-        assert c.post("/access/verify", json={"code": CODE}).json() == {"ok": True, "required": True}
+        ok = c.post("/access/verify", json={"code": CODE}).json()
+        assert ok == {"ok": True, "required": True, "token": TOKEN} and CODE not in str(ok)
+        assert c.get("/meta", headers={"X-Access-Code": ok["token"]}).status_code == 200  # the token the server hands out really works
         for _ in range(8):
             assert c.post("/access/verify", json={"code": "wrong"}).status_code == 401
         r = c.post("/access/verify", json={"code": CODE})  # even the right code waits once locked out
         assert r.status_code == 429 and r.headers["retry-after"] and r.json()["error"]["code"] == "rate_limited"
+
+
+def test_forging_forwarded_for_cannot_dodge_the_guess_limit(settings):
+    """Regression for the live finding: a different X-Forwarded-For per guess used to give every guess a fresh allowance."""
+    with locked_client(settings) as c:
+        codes = [c.post("/access/verify", json={"code": f"guess{i}"}, headers={"X-Forwarded-For": f"203.0.113.{i}, 198.51.100.7"}).status_code for i in range(12)]
+        assert codes[:8] == [401] * 8 and set(codes[8:]) == {429}  # same real visitor (the last entry): locked after 8
+
+
+def test_sitewide_cap_stops_a_distributed_guesser(settings):
+    with locked_client(settings) as c:
+        codes = [c.post("/access/verify", json={"code": f"g{i}"}, headers={"CF-Connecting-IP": f"192.0.2.{i % 250}"}).status_code for i in range(70)]
+        assert codes[:60] == [401] * 60 and set(codes[60:]) == {429}  # 60 wrong guesses from 'many' visitors, then everyone waits
+        assert c.post("/access/verify", json={"code": CODE}, headers={"CF-Connecting-IP": "192.0.2.250"}).status_code == 429
+
+
+def test_guessing_through_normal_routes_gets_nowhere(settings):
+    with locked_client(settings) as c:
+        results = {c.get("/meta", headers={"X-Access-Code": g}).status_code for g in ([CODE] + [f"guess{i}" for i in range(50)])}
+        assert results == {401}  # not even the real code works there, so there is nothing to brute-force
+
+
+def test_visitor_bucket_ignores_the_forgeable_start_of_forwarded_for(settings):
+    with locked_client(settings, rate_heavy_per_min=2) as c:
+        h = {"X-Access-Code": TOKEN}
+        body = {"session_id": SID, "message": "a comedy"}
+        sent = [c.post("/chat", json=body, headers={**h, "X-Forwarded-For": f"10.0.0.{i}, 198.51.100.9"}).status_code for i in range(4)]
+        assert sent == [200, 200, 429, 429]
+        other = c.post("/chat", json=body, headers={**h, "X-Forwarded-For": "10.0.0.1, 198.51.100.10"})  # genuinely another visitor
+        assert other.status_code == 200
+        cdn = c.post("/chat", json=body, headers={**h, "X-Forwarded-For": "198.51.100.9", "CF-Connecting-IP": "203.0.113.200"})  # the CDN's own header wins
+        assert cdn.status_code == 200
+
+
+def test_oversized_bodies_are_refused_before_any_processing(settings):
+    with locked_client(settings) as c:
+        big = b'{"session_id":"aaaaaaaaaaaa","message":"' + b"a" * (300 * 1024) + b'"}'
+        for headers in ({}, {"X-Access-Code": TOKEN}):  # a stranger and an authorised visitor alike
+            r = c.post("/chat", content=big, headers={"content-type": "application/json", **headers})
+            assert r.status_code == 413 and r.json()["error"]["code"] == "payload_too_large"
+        small = c.post("/chat", json={"session_id": SID, "message": "a comedy"}, headers={"X-Access-Code": TOKEN})
+        assert small.status_code == 200
+
+
+def test_chunked_upload_without_a_declared_size_is_cut_off_too(settings):
+    with locked_client(settings) as c:
+        def pieces():
+            for _ in range(40):
+                yield b"a" * 8192  # 320 KB, streamed with no Content-Length
+        r = c.post("/chat", content=pieces(), headers={"content-type": "application/json"})
+        assert r.status_code == 413
+
+
+def test_api_responses_carry_browser_protection_headers(settings):
+    with locked_client(settings) as c:
+        for r in (c.get("/health"), c.get("/meta", headers={"X-Access-Code": TOKEN}), c.get("/meta")):
+            assert r.headers["x-content-type-options"] == "nosniff" and r.headers["x-frame-options"] == "DENY"
+            assert r.headers["referrer-policy"] == "no-referrer" and "max-age" in r.headers["strict-transport-security"]
+            assert r.headers["cache-control"] == "no-store"
+        with c.stream("POST", "/chat/stream", json={"session_id": SID, "message": "a comedy"}, headers={"X-Access-Code": TOKEN}) as s:
+            assert "no-cache" in s.headers["cache-control"]  # the stream keeps its own caching rule
+
+
+def test_reading_a_session_never_creates_one(settings):
+    with locked_client(settings) as c:
+        store = c.app.state.rs.service.sessions
+        before = len(store._sessions)
+        h = {"X-Access-Code": TOKEN}
+        for i in range(25):
+            assert c.get(f"/sessions/stranger-{i:08d}", headers=h).json()["last_cards"] == []
+            assert c.get(f"/sessions/stranger-{i:08d}/profile", headers=h).status_code == 200
+        assert len(store._sessions) == before
+
+
+def test_hosted_copy_refuses_to_start_without_an_access_code(settings, monkeypatch):
+    monkeypatch.setenv("RENDER", "true")  # Render sets this on every hosted service
+    with pytest.raises(RuntimeError, match="ACCESS_CODE"):
+        create_app(settings, build_state(settings))
+    create_app(settings.model_copy(update={"access_code": SecretStr(CODE)}), build_state(settings))  # fine with a code
+    create_app(settings.model_copy(update={"allow_public": True}), build_state(settings))  # or open on purpose
 
 
 def test_cors_preflight_allows_the_access_header_and_every_listed_origin(settings):
@@ -87,7 +171,7 @@ def test_codes_match_is_exact():
 # ------------------------------------------------------------------ rate limits
 def test_chat_is_rate_limited_per_visitor_and_recovers_in_shape(settings):
     with locked_client(settings, rate_heavy_per_min=2) as c:
-        h = {"X-Access-Code": CODE}
+        h = {"X-Access-Code": TOKEN}
         body = {"session_id": SID, "message": "a comedy"}
         assert c.post("/chat", json=body, headers=h).status_code == 200
         assert c.post("/chat", json=body, headers=h).status_code == 200

@@ -225,8 +225,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const unlock = useCallback(async (code: string) => {
-    await api.verifyAccess(code.trim());
-    setAccessCode(code.trim());
+    const res = await api.verifyAccess(code.trim());
+    setAccessCode(res.token ?? code.trim()); // the browser keeps the server's token, not the code itself
     setLocked(false);
     setReady(false);
     setFatal(null);

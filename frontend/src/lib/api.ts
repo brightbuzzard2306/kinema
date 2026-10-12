@@ -57,7 +57,7 @@ const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.strin
 export const api = {
   health: () => request<Health>("/health", { timeoutMs: 10_000 }),
   /** Check an access code (a wrong one rejects with the server's message; it never clears a stored code). */
-  verifyAccess: (code: string) => request<{ ok: boolean }>("/access/verify", { ...post({ code }), timeoutMs: 15_000, keepCode: true }),
+  verifyAccess: (code: string) => request<{ ok: boolean; token?: string }>("/access/verify", { ...post({ code }), timeoutMs: 15_000, keepCode: true }),
   llmStatus: () => request<LlmCheck>("/llm/status", { timeoutMs: 40_000 }),
   meta: () => request<Meta>("/meta"),
   searchMovies: (q: string, limit = 8) =>

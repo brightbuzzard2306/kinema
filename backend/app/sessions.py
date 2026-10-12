@@ -80,6 +80,11 @@ class SessionStore:
             log.warning("could not persist sessions")
 
     # ---------------------------------------------------------------- access
+    def peek(self, session_id: str) -> Session | None:
+        """Read-only lookup: never creates a session (so stray GETs cannot fill the store and evict real conversations)."""
+        with self._lock:
+            return self._sessions.get(session_id)
+
     def get(self, session_id: str) -> Session:
         with self._lock:
             session = self._sessions.get(session_id)

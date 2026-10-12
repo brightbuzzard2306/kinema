@@ -270,8 +270,7 @@ def _friendly_status_reason(status: int, detail: str) -> str:
         return "The configured Claude model was not found. Check CLAUDE_MODEL in .env."
     if status == 403:
         return "This API key isn't allowed to use that model or feature."
-    base = f"Claude API error ({status})"
-    return f"{base}: {detail}" if detail else f"{base}."
+    return f"Claude API error ({status})."  # the API's own wording stays in the server log, not on a visitor's screen
 
 
 _NUM = re.compile(r"\d+(?:\.\d+)?")

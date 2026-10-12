@@ -39,7 +39,7 @@ Secrets (API keys, the access code) are typed into the dashboards by you; they a
 
    | Name | Value | Notes |
    |---|---|---|
-   | `ACCESS_CODE` | a word or phrase **you choose** | The password visitors type. Share it only with who should see the site. |
+   | `ACCESS_CODE` | a **long** phrase you choose (16+ characters, e.g. four unrelated words) | The password visitors type. Share it only with who should see the site. A long phrase makes guessing hopeless even if someone tries. |
    | `ANTHROPIC_API_KEY` | your key | Paste it here; never anywhere else. |
    | `ANTHROPIC_WORKSPACE_ID` | the `wrkspc_…` value from your local `.env` | Your key needs it (it did locally). Skip only if your `.env` has no such line. |
    | `CLAUDE_MODEL` | `claude-haiku-4-5` | Fast and cheap. Same as local. |

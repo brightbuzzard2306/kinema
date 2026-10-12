@@ -6,6 +6,7 @@ Run:  cd backend && .venv/bin/uvicorn app.main:app --port 8000
 
 import json
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -22,7 +23,7 @@ from .dataset import DatasetError, load_raw
 from .engine.recommender import DEFAULT_WEIGHTS, Recommender
 from .llm import ClaudeService
 from .posters import PosterService
-from .protect import DailyBudget, SlidingWindow, codes_match
+from .protect import BodyLimitMiddleware, DailyBudget, SecurityHeadersMiddleware, SlidingWindow, codes_match, derive_token
 from .schemas import (
     ChatRequest,
     ChatResponse,
@@ -39,10 +40,14 @@ from .sessions import SessionStore
 from .streaming import SSE_HEADERS, event_stream
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# HTTP client libraries log full URLs at INFO, and TMDB's v3 key travels in the URL: keep those out of the logs
+for _noisy in ("httpx", "httpx2", "httpcore", "httpcore2", "anthropic"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
 log = logging.getLogger("rs.api")
 HEAVY_PATHS = {"/chat", "/chat/stream", "/recommend", "/recommend/stream", "/compare"}  # each may cost a Claude call
 OPEN_PATHS = {"/health", "/access/verify"}  # reachable without the access code (health is what uptime monitors ping)
 MAX_FAILED_CODES = 8  # wrong access codes per visitor per 10 minutes before they are locked out for a while
+MAX_FAILED_CODES_SITEWIDE = 60  # ...and across ALL visitors, because a visitor's address can be forged
 SESSION_ID = Path(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
 PREFERENCE_WEIGHT = 0.15  # share of the hybrid reserved for explicit genre preferences
 
@@ -68,10 +73,18 @@ class ApiProblem(Exception):
 
 
 def client_key(request: Request) -> str:
-    """One bucket per visitor. Behind the host's proxy the visitor's address is the first X-Forwarded-For entry."""
+    """One bucket per visitor, taken from the headers the hosting edge sets itself.
+
+    ``X-Forwarded-For`` is a list the visitor can start with anything, and only the LAST entry was added by our own proxy, so the
+    first entry must never be trusted (forging it used to give every request a fresh, unlimited bucket).
+    """
+    for name in ("cf-connecting-ip", "true-client-ip"):  # set (and overwritten) by the CDN in front of the host
+        value = request.headers.get(name, "").strip()
+        if value:
+            return value[:64]
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
-        return forwarded.split(",")[0].strip()[:64]
+        return forwarded.split(",")[-1].strip()[:64]
     return request.client.host if request.client else "unknown"
 
 
@@ -125,6 +138,9 @@ def build_state(settings: Settings) -> AppState:
 
 def create_app(settings: Settings | None = None, state: AppState | None = None) -> FastAPI:
     settings = settings or get_settings()
+    if os.environ.get("RENDER") and not settings.access_code_value and not settings.allow_public:
+        # fail closed: a hosted copy without its access code would be a public, Claude-spending website
+        raise RuntimeError("ACCESS_CODE is not set on this hosted deployment. Set it, or set ALLOW_PUBLIC=true to run open on purpose.")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -134,14 +150,17 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
     heavy = SlidingWindow(settings.rate_heavy_per_min)
     light = SlidingWindow(settings.rate_light_per_min)
     failed_codes = SlidingWindow(MAX_FAILED_CODES, window=600.0)
+    failed_sitewide = SlidingWindow(MAX_FAILED_CODES_SITEWIDE, window=600.0)
     access_code = settings.access_code_value
+    access_token = derive_token(access_code) if access_code else None  # what the browser keeps after a correct code
 
     async def guard(request: Request) -> None:
         """Runs before every route: access code first, then the per-visitor rate limit."""
         path = request.url.path
         if path in OPEN_PATHS:
             return
-        if access_code and not codes_match(request.headers.get("x-access-code", ""), access_code):
+        # normal routes accept only the derived token, never the raw code: guessing the code is possible ONLY on /access/verify
+        if access_token and not codes_match(request.headers.get("x-access-code", ""), access_token):
             raise ApiProblem(401, "access_denied", "This site is private. Enter the access code to continue.")
         ok, wait = (heavy if path in HEAVY_PATHS else light).hit(client_key(request))
         if not ok:
@@ -153,6 +172,8 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
     app.add_middleware(
         CORSMiddleware, allow_origins=settings.origins, allow_methods=["GET", "POST", "PUT"], allow_headers=["Content-Type", "X-Access-Code"],
     )
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(BodyLimitMiddleware)  # added last = outermost: oversized bodies are refused before anything reads them
 
     def get_state(request: Request) -> AppState:
         st: AppState = request.app.state.rs
@@ -209,11 +230,12 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
         who = client_key(request)
         if not access_code:
             return {"ok": True, "required": False}
-        if not failed_codes.peek(who):
+        if not (failed_codes.peek(who) and failed_sitewide.peek("all")):
             raise ApiProblem(429, "rate_limited", "Too many wrong codes. Please wait a few minutes and try again.", {"Retry-After": "600"})
         if codes_match(body.code, access_code):
-            return {"ok": True, "required": True}
+            return {"ok": True, "required": True, "token": access_token}
         failed_codes.hit(who)
+        failed_sitewide.hit("all")
         raise ApiProblem(401, "access_denied", "That code isn't right.")
 
     @app.get("/llm/status")
@@ -318,13 +340,16 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
     @app.get("/sessions/{session_id}")
     def session_state(st: StateDep, session_id: Annotated[str, SESSION_ID]):
         assert st.service
-        s = st.service.sessions.get(session_id)
+        s = st.service.sessions.peek(session_id)  # read-only: a GET must not create (or evict) a session
+        if s is None:
+            return {"profile": TasteProfile(), "last_cards": [], "history": []}
         return {"profile": s.profile, "last_cards": s.last_cards, "history": [t.model_dump() for t in s.history]}
 
     @app.get("/sessions/{session_id}/profile", response_model=TasteProfile)
     def get_profile(st: StateDep, session_id: Annotated[str, SESSION_ID]):
         assert st.service
-        return st.service.sessions.get(session_id).profile
+        s = st.service.sessions.peek(session_id)
+        return s.profile if s else TasteProfile()
 
     @app.put("/sessions/{session_id}/profile", response_model=TasteProfile)
     def put_profile(st: StateDep, session_id: Annotated[str, SESSION_ID], body: ProfileUpdate):

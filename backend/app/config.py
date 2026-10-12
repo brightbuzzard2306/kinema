@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     access_code: SecretStr | None = None  # when set, every API call except /health must carry it
     rate_heavy_per_min: int = Field(default=20, ge=1)  # chat / recommend / compare, per visitor
     rate_light_per_min: int = Field(default=240, ge=1)  # everything else, per visitor
+    allow_public: bool = False  # on a hosted deployment the app refuses to start WITHOUT an access code unless this is set
     claude_daily_limit: int = 400  # Claude calls per UTC day for the whole site (0 = unlimited); then offline mode
     data_dir: Path = PROJECT_ROOT / "data"
     reports_dir: Path = PROJECT_ROOT / "reports"
