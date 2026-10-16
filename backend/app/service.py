@@ -8,6 +8,7 @@ rule-based parser and template replies take over and the app keeps working.
 from __future__ import annotations
 
 import logging
+import threading
 import re
 from collections.abc import Callable
 from dataclasses import asdict
@@ -15,6 +16,8 @@ from dataclasses import asdict
 from .catalog import Catalog, normalize_text
 from .engine.recommender import Query, Recommender, Recommendation
 from .llm import ClaudeService, LLMUnavailable
+from .nlp.spell import MAX_TOKENS, SpellCorrector, tokenize
+from .nlp.spell_eval import build_corpus
 from .nlu import ResolvedPreferences, mood_exclusions, parse_with_rules, resolve_preferences
 from .schemas import (
     ChatResponse,
@@ -58,6 +61,12 @@ def _emit(emit: Emit | None, **event) -> None:
         log.debug("progress listener failed", exc_info=True)
 
 
+# Words that mean "a bare title was NOT typed": greetings and chit-chat must never be turned into a movie
+CHAT_WORDS = {"hi", "hello", "hey", "yo", "sup", "thanks", "thank", "you", "ok", "okay", "yes", "no", "yeah", "nope", "help", "bye", "goodbye", "what", "why",
+              "how", "who", "when", "where", "cool", "nice", "good", "great", "wow", "please", "sorry", "lol", "hmm", "hm", "test", "testing", "a", "the", "i", "me", "it"}
+FILLER_FIRST_WORDS = {"movie", "film"}
+
+
 class ChatService:
     def __init__(self, catalog: Catalog, recommender: Recommender, sessions: SessionStore, claude: ClaudeService, max_results: int = 12) -> None:
         self.catalog = catalog
@@ -67,6 +76,39 @@ class ChatService:
         self.max_results = max_results
         self._genres = set(catalog.all_genres)
         self._ids = set(catalog.index_by_id)
+        self._spell: SpellCorrector | None = None
+        self._spell_lock = threading.Lock()
+
+    # ------------------------------------------------------------------ spelling repair (the NLP Lab's corrector, used inside the chat)
+    @property
+    def spell(self) -> SpellCorrector:
+        with self._spell_lock:
+            if self._spell is None:
+                titles, extra = build_corpus(self.catalog)
+                self._spell = SpellCorrector(titles, extra)
+            return self._spell
+
+    def _repair_title(self, text: str) -> int | None:
+        """A title that did not match: fix its spelling, then accept only a (near-)exact catalogue title. Never guesses loosely."""
+        tokens = tokenize(text)[:MAX_TOKENS]
+        if not tokens or len(tokens) > 8:
+            return None
+        fixed = self.spell.correct(tokens)["corrected"]
+        if fixed == " ".join(tokens):
+            return None
+        match = self.catalog.resolve_title(fixed, min_score=0.95)
+        return match.movie_id if match else None
+
+    def _bare_title(self, message: str) -> tuple[int, bool] | None:
+        """The whole message is just a movie title (typos allowed), e.g. 'jordfather'. Returns (movie id, was it spelling-repaired)."""
+        tokens = [t for i, t in enumerate(tokenize(message)) if not (i == 0 and t in FILLER_FIRST_WORDS)]
+        if not tokens or len(tokens) > 8 or set(tokens) <= CHAT_WORDS:
+            return None
+        direct = self.catalog.resolve_title(" ".join(tokens), min_score=0.95)
+        if direct:
+            return direct.movie_id, False
+        repaired = self._repair_title(" ".join(tokens))
+        return (repaired, True) if repaired is not None else None
 
     # ------------------------------------------------------------------ public API
     def chat(self, session_id: str, message: str, emit: Emit | None = None) -> ChatResponse:
@@ -74,10 +116,24 @@ class ChatService:
         message = message.strip()
         _emit(emit, event="step", step="interpret")
         prefs, mode, reason = self._interpret(message, session)
-        resolved = resolve_preferences(prefs, self.catalog)
+        resolved = resolve_preferences(prefs, self.catalog, rescue=self._repair_title)
         notes: list[str] = []
         changes: list[str] = []
         intent = prefs.intent
+        nothing_recognised = not (resolved.genres or resolved.liked_ids or resolved.anchor_ids or resolved.disliked_ids or resolved.excluded_genres or prefs.mood
+                                  or prefs.min_rating is not None or prefs.year_min is not None or prefs.year_max is not None)
+        if intent in ("chitchat", "recommend") and nothing_recognised:
+            # a message that is only a movie title is a request for that movie, whatever the language model labelled it (models are inconsistent here)
+            bare = self._bare_title(message)
+            if bare is not None:
+                resolved.liked_ids = [bare[0]]
+                if bare[1]:
+                    resolved.corrections.append((message[:120], bare[0]))
+                intent = prefs.intent = "recommend"
+        for typed, mid in resolved.corrections:
+            movie = self.catalog.get(mid)
+            if movie:
+                notes.append(f"I read \u201c{typed.strip()[:60]}\u201d as {movie.title}{f' ({movie.year})' if movie.year else ''}.")
 
         if intent == "reset":
             session = self.sessions.reset(session_id, keep_profile=False)

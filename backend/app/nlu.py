@@ -9,6 +9,7 @@ hallucinated title or genre can never reach the recommender.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from .catalog import Catalog, normalize_text
@@ -97,10 +98,13 @@ class ResolvedPreferences:
     anchor_ids: list[int] = field(default_factory=list)
     unresolved_titles: list[str] = field(default_factory=list)
     unsupported: list[str] = field(default_factory=list)
+    corrections: list[tuple[str, int]] = field(default_factory=list)  # (what the user typed, movie it was repaired to)
 
 
-def resolve_preferences(prefs: Preferences, catalog: Catalog) -> ResolvedPreferences:
-    """Validate and clamp NLU output against the catalogue (the anti-hallucination gate)."""
+def resolve_preferences(prefs: Preferences, catalog: Catalog, rescue: "Callable[[str], int | None] | None" = None) -> ResolvedPreferences:
+    """Validate and clamp NLU output against the catalogue (the anti-hallucination gate).
+
+    ``rescue`` is an optional second chance for a title that did not match (the spelling corrector): it returns a movie id or None."""
     r = ResolvedPreferences(prefs=prefs)
     r.genres = canonical_genres(prefs.genres, catalog.all_genres)
     r.excluded_genres = [g for g in canonical_genres(prefs.excluded_genres, catalog.all_genres) if g not in r.genres]
@@ -109,6 +113,13 @@ def resolve_preferences(prefs: Preferences, catalog: Catalog) -> ResolvedPrefere
         found: list[int] = []
         for t in titles:
             match = catalog.resolve_title(str(t)[:120])
+            if match is None and rescue is not None:
+                repaired = rescue(str(t)[:120])
+                if repaired is not None:
+                    r.corrections.append((str(t)[:120], repaired))
+                    if repaired not in found:
+                        found.append(repaired)
+                    continue
             if match is None:
                 if t not in r.unresolved_titles:
                     r.unresolved_titles.append(str(t)[:120])

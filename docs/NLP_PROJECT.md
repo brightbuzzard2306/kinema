@@ -7,6 +7,13 @@ It reuses the recommender's catalogue (9,742 MovieLens titles and the user tags)
 You type a movie title with mistakes ("shawshenk redemtion"); the model returns the intended title ("shawshank redemption") and the movies it matches.
 The page shows the whole **candidate lattice** (every candidate word, its edit distance and its Viterbi score) so the algorithm can be explained step by step.
 
+## It is also used inside the chat
+The same corrector now repairs what you type in the Kinema chat (added after a live test where `jordfather` and `inception` were ignored):
+- **A message that is only a movie title** ("jordfather", "inceptoin") is treated as "I liked that movie", whatever the language model labelled it. Claude models are inconsistent on lone words, so the rescue does not depend on which model runs, and it also works with no Claude at all.
+- **A mistyped title inside a sentence** ("I loved inceptoin") is repaired when the normal title matching fails.
+- The app always says what it did ("I read “jordfather” as The Godfather (1972)"), accepts only a near-exact catalogue title after correction, and never turns greetings ("hello", "thanks", "help") or gibberish into a movie.
+Code: `ChatService._bare_title` / `_repair_title` in `backend/app/service.py`, tests in `backend/tests/test_nlp_chat.py`.
+
 ## Syllabus coverage
 | Syllabus topic | Where it is used | Written from scratch? |
 |---|---|---|
