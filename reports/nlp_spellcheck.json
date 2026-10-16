@@ -1,0 +1,185 @@
+{
+  "generated_at": "2026-10-16T03:29:31+00:00",
+  "dataset": "MovieLens ml-latest-small titles + tags",
+  "corpus": {
+    "titles": 9742,
+    "title_tokens": 29019,
+    "extra_known_words": 1757
+  },
+  "channel": {
+    "p_edit": 0.02,
+    "max_edit_distance": 2,
+    "bigram_k": 0.05
+  },
+  "perplexity": {
+    "n_train": 7793,
+    "n_valid": 974,
+    "n_test": 975,
+    "vocab": 7527,
+    "rows": [
+      {
+        "model": "unigram, add-1 (Laplace)",
+        "k": 1.0,
+        "valid": 1761.677077186051,
+        "test": 1777.6849465458629
+      },
+      {
+        "model": "bigram, no smoothing (MLE)",
+        "k": 0.0,
+        "valid": null,
+        "test": null
+      },
+      {
+        "model": "bigram, add-k (k=1)",
+        "k": 1.0,
+        "valid": 2898.7423458319945,
+        "test": 3025.9849444901192
+      },
+      {
+        "model": "bigram, add-k (k=0.5)",
+        "k": 0.5,
+        "valid": 2593.1401939786656,
+        "test": 2706.043030860811
+      },
+      {
+        "model": "bigram, add-k (k=0.1)",
+        "k": 0.1,
+        "valid": 2227.5634593449204,
+        "test": 2315.9714544516937
+      },
+      {
+        "model": "bigram, add-k (k=0.05)",
+        "k": 0.05,
+        "valid": 2186.431387705176,
+        "test": 2267.9324822736603
+      },
+      {
+        "model": "bigram, add-k (k=0.01)",
+        "k": 0.01,
+        "valid": 2309.2066983883105,
+        "test": 2383.525873179989
+      },
+      {
+        "model": "bigram, add-k (k=0.005)",
+        "k": 0.005,
+        "valid": 2467.6703322107587,
+        "test": 2543.5141128697237
+      }
+    ],
+    "chosen_k": 0.05,
+    "test_at_chosen_k": 2267.9324822736603
+  },
+  "correction": [
+    {
+      "protocol": "seen",
+      "n_train_titles": 9742,
+      "results": {
+        "1_edit": {
+          "items": 300,
+          "none": {
+            "token_accuracy": 0.0,
+            "title_accuracy": 0.0
+          },
+          "difflib": {
+            "token_accuracy": 0.8833333333333333,
+            "title_accuracy": 0.8833333333333333
+          },
+          "edit": {
+            "token_accuracy": 0.8933333333333333,
+            "title_accuracy": 0.8933333333333333
+          },
+          "unigram": {
+            "token_accuracy": 0.9266666666666666,
+            "title_accuracy": 0.9266666666666666
+          },
+          "bigram": {
+            "token_accuracy": 1.0,
+            "title_accuracy": 1.0
+          }
+        },
+        "2_edit": {
+          "items": 300,
+          "none": {
+            "token_accuracy": 0.0,
+            "title_accuracy": 0.0
+          },
+          "difflib": {
+            "token_accuracy": 0.5666666666666667,
+            "title_accuracy": 0.5666666666666667
+          },
+          "edit": {
+            "token_accuracy": 0.5766666666666667,
+            "title_accuracy": 0.5766666666666667
+          },
+          "unigram": {
+            "token_accuracy": 0.6633333333333333,
+            "title_accuracy": 0.6633333333333333
+          },
+          "bigram": {
+            "token_accuracy": 0.8366666666666667,
+            "title_accuracy": 0.8366666666666667
+          }
+        }
+      }
+    },
+    {
+      "protocol": "held-out",
+      "n_train_titles": 7793,
+      "results": {
+        "1_edit": {
+          "items": 300,
+          "none": {
+            "token_accuracy": 0.0,
+            "title_accuracy": 0.0
+          },
+          "difflib": {
+            "token_accuracy": 0.8733333333333333,
+            "title_accuracy": 0.6333333333333333
+          },
+          "edit": {
+            "token_accuracy": 0.8533333333333334,
+            "title_accuracy": 0.64
+          },
+          "unigram": {
+            "token_accuracy": 0.9166666666666666,
+            "title_accuracy": 0.68
+          },
+          "bigram": {
+            "token_accuracy": 0.9033333333333333,
+            "title_accuracy": 0.67
+          }
+        },
+        "2_edit": {
+          "items": 300,
+          "none": {
+            "token_accuracy": 0.0,
+            "title_accuracy": 0.0
+          },
+          "difflib": {
+            "token_accuracy": 0.5366666666666666,
+            "title_accuracy": 0.3933333333333333
+          },
+          "edit": {
+            "token_accuracy": 0.5666666666666667,
+            "title_accuracy": 0.4666666666666667
+          },
+          "unigram": {
+            "token_accuracy": 0.64,
+            "title_accuracy": 0.5133333333333333
+          },
+          "bigram": {
+            "token_accuracy": 0.6333333333333333,
+            "title_accuracy": 0.5233333333333333
+          }
+        }
+      },
+      "false_correction_rate": {
+        "difflib": 0.32,
+        "edit": 0.2733333333333333,
+        "unigram": 0.2733333333333333,
+        "bigram": 0.27666666666666667,
+        "n_clean_titles": 300
+      }
+    }
+  ]
+}

@@ -66,6 +66,11 @@ Restart the API after editing `.env`. Keys are read by the backend only and are 
 
 To show a credit line in the footer and the *About* card, copy `frontend/.env.example` to `frontend/.env.local` and fill `NEXT_PUBLIC_AUTHOR`, `NEXT_PUBLIC_COLLEGE`, `NEXT_PUBLIC_COURSE`, `NEXT_PUBLIC_GUIDE` (all optional; blank = hidden). These values are baked into the page at build time and are public by design. Restart `npm run dev` (or rebuild) after changing them.
 
+## NLP Lab (Natural Language Processing course)
+
+`/nlp` in the web app is an NLP mini project built on the same catalogue: **spelling correction of movie titles** written from scratch (edit distance, BK-tree, smoothed bigram language model, Viterbi), compared with a library baseline.
+Details, syllabus coverage and viva notes: [docs/NLP_PROJECT.md](docs/NLP_PROJECT.md). Regenerate the numbers with `cd backend && .venv/bin/python -m scripts.run_nlp_eval`.
+
 ## Put it on the web
 
 Step-by-step (Render for the API, Vercel for the site, a custom domain, an access code, a Claude budget): **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**. The API ships as a Docker image (`backend/Dockerfile`) that fits Render's free 512 MB plan (about 230 MB measured).

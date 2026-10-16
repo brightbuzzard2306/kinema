@@ -7,9 +7,10 @@ Run:  cd backend && .venv/bin/uvicorn app.main:app --port 8000
 import json
 import logging
 import os
+import threading
 import time
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
@@ -22,6 +23,8 @@ from .config import Settings, get_settings
 from .dataset import DatasetError, load_raw
 from .engine.recommender import DEFAULT_WEIGHTS, Recommender
 from .llm import ClaudeService
+from .nlp.spell import MAX_TOKENS, SpellCorrector, tokenize
+from .nlp.spell_eval import build_corpus
 from .posters import PosterService
 from .protect import BodyLimitMiddleware, DailyBudget, SecurityHeadersMiddleware, SlidingWindow, codes_match, derive_token
 from .schemas import (
@@ -62,6 +65,8 @@ class AppState:
     posters: PosterService | None = None
     n_ratings: int = 0
     n_users: int = 0
+    spell: SpellCorrector | None = None  # built on first use (the NLP Lab), not at start-up
+    spell_lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 class ApiProblem(Exception):
@@ -360,6 +365,36 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
     def reset_session(st: StateDep, session_id: Annotated[str, SESSION_ID], keep_profile: bool = True):
         assert st.service
         return st.service.sessions.reset(session_id, keep_profile).profile
+
+    # ------------------------------------------------------------ NLP Lab: spelling correction of movie titles (see app/nlp/spell.py)
+    def get_spell(st: AppState) -> SpellCorrector:
+        with st.spell_lock:
+            if st.spell is None:
+                assert st.catalog
+                titles, extra = build_corpus(st.catalog)
+                st.spell = SpellCorrector(titles, extra)
+            return st.spell
+
+    @app.get("/nlp/spell")
+    def nlp_spell(st: StateDep, q: Annotated[str, Query(max_length=120)]):
+        """Noisy-channel + bigram + Viterbi correction of a typed title; returns the whole candidate lattice so the UI can show the work."""
+        assert st.catalog
+        result = get_spell(st).correct(tokenize(q)[:MAX_TOKENS])
+        key = result["corrected"]
+        ids: list[int] = []
+        for variant in (key, key.removeprefix("the "), "the " + key):  # titles are indexed with and without a leading article
+            ids = st.catalog._title_index.get(variant, [])
+            if ids:
+                break
+        movies = [st.catalog.movies[i] for i in ids][:5]
+        return {"query": q, **result, "matches": [{"movie_id": m.movie_id, "title": m.title, "year": m.year} for m in movies]}
+
+    @app.get("/nlp/report")
+    def nlp_report(request: Request):
+        path = request.app.state.rs.settings.reports_dir / "nlp_spellcheck.json"
+        if not path.is_file():
+            raise HTTPException(404, "No NLP evaluation has been run yet. Run: python -m scripts.run_nlp_eval")
+        return json.loads(path.read_text())
 
     @app.get("/evaluation")
     def evaluation(request: Request):

@@ -6,6 +6,8 @@ import type {
   FeedbackAction,
   Health,
   LlmCheck,
+  NlpReport,
+  SpellResult,
   Meta,
   MovieSummary,
   ProfileUpdate,
@@ -95,4 +97,6 @@ export const api = {
   reset: (id: string, keepProfile: boolean) =>
     request<TasteProfile>(`/sessions/${id}/reset?keep_profile=${keepProfile}`, { method: "POST" }),
   evaluation: () => request<EvaluationReport>("/evaluation"),
+  nlpSpell: (q: string) => request<SpellResult>(`/nlp/spell?q=${encodeURIComponent(q)}`, { timeoutMs: 20_000 }),
+  nlpReport: () => request<NlpReport>("/nlp/report"),
 };

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
-import { BarChart3, Columns3, Info, Plus, SlidersHorizontal } from "lucide-react";
+import { BarChart3, Columns3, FlaskConical, Info, Plus, SlidersHorizontal } from "lucide-react";
 import { Logo } from "./Logo";
 import { useWorkspace } from "./WorkspaceProvider";
 import { BRAND } from "@/lib/brand";
@@ -113,6 +113,7 @@ export function Nav({ compact = false }: { compact?: boolean }) {
           {!compact && <NavAction icon={Columns3} label="Compare" active={compareOpen} onClick={() => setCompareOpen(true)} className="hidden sm:flex" />}
           {!compact && <NavAction icon={SlidersHorizontal} label="Taste" active={profileOpen} badge={prefs} onClick={() => setProfileOpen(true)} />}
           <NavAction icon={BarChart3} label="Evaluation" href="/evaluation" className="hidden sm:flex" />
+          <NavAction icon={FlaskConical} label="NLP Lab" href="/nlp" className="hidden md:flex" />
           <NavAction icon={Info} label="Project" active={project.open} onClick={() => openProject("about")} />
           {!compact && <ModeBadge />}
           {!compact && messages.length > 0 && (

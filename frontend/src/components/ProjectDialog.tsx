@@ -3,7 +3,7 @@
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowUpRight, Compass, GraduationCap, Users, X } from "lucide-react";
+import { ArrowUpRight, Compass, FlaskConical, GraduationCap, Users, X } from "lucide-react";
 import BlurText from "./bits/BlurText";
 import { MorphText } from "./MorphText";
 import ShinyText from "./bits/ShinyText";
@@ -77,6 +77,9 @@ function AboutPanel() {
             <Compass className="h-3.5 w-3.5" aria-hidden /> Take the tour
           </button>
         )}
+        <Link href="/nlp" onClick={closeProject} className={pillBtn}>
+          <FlaskConical className="h-3.5 w-3.5" aria-hidden /> NLP Lab
+        </Link>
         <button type="button" onClick={() => setProjectTab("team")} className={pillBtn}>
           <Users className="h-3.5 w-3.5" aria-hidden /> Meet the team
         </button>

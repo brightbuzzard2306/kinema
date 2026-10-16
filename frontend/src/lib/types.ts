@@ -93,6 +93,46 @@ export interface Health {
   access?: { required: boolean };
 }
 
+export interface SpellCandidate {
+  word: string;
+  distance: number;
+  channel: number;
+  best_path_score: number;
+  on_best_path: boolean;
+}
+export interface SpellToken {
+  input: string;
+  known: boolean;
+  chosen: string;
+  candidates: SpellCandidate[];
+}
+export interface SpellResult {
+  query: string;
+  tokens: SpellToken[];
+  corrected: string;
+  changed: boolean;
+  matches: { movie_id: number; title: string; year: number | null }[];
+}
+export interface NlpReport {
+  generated_at: string;
+  corpus: { titles: number; title_tokens: number; extra_known_words: number };
+  channel: { p_edit: number; max_edit_distance: number; bigram_k: number };
+  perplexity: {
+    n_train: number;
+    n_valid: number;
+    n_test: number;
+    vocab: number;
+    rows: { model: string; k: number; valid: number | null; test: number | null }[];
+    chosen_k: number;
+    test_at_chosen_k: number;
+  };
+  correction: {
+    protocol: "seen" | "held-out";
+    results: Record<"1_edit" | "2_edit", { items: number } & Record<string, { token_accuracy: number; title_accuracy: number } | number>>;
+    false_correction_rate?: Record<string, number>;
+  }[];
+}
+
 export interface LlmCheck {
   enabled: boolean;
   ok: boolean;
