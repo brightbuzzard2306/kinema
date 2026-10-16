@@ -1,55 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import * as Popover from "@radix-ui/react-popover";
 import { BarChart3, Columns3, FlaskConical, Info, Plus, SlidersHorizontal } from "lucide-react";
 import { Logo } from "./Logo";
 import { useWorkspace } from "./WorkspaceProvider";
 import { BRAND } from "@/lib/brand";
 import { openProject, useProject } from "@/lib/project";
 import { cn } from "@/lib/utils";
-
-function ModeBadge() {
-  const { llm, health } = useWorkspace();
-  const claude = llm.mode === "claude";
-  return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          aria-label={`Language mode: ${claude ? "Claude" : "offline parser"}. Open details`}
-          className="glass-pill press flex h-9 items-center gap-2 rounded-full px-3 text-[12.5px] text-white/85"
-        >
-          <span className="relative grid h-2 w-2 place-items-center">
-            <span className={cn("absolute inset-0 rounded-full", claude ? "bg-white" : "border border-white/70")} />
-            {claude && llm.verified && <span className="absolute inset-0 rounded-full bg-white" style={{ animation: "pulse-ring 2.4s ease-out infinite" }} />}
-          </span>
-          <span className="hidden sm:inline">{claude ? (llm.verified ? "Claude" : "Checking Claude…") : "Offline mode"}</span>
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          sideOffset={10}
-          align="end"
-          className="glass glass-strong z-50 w-[280px] rounded-3xl p-4 text-[13px] leading-relaxed text-white/80 data-[state=open]:animate-[pop-in_0.25s_var(--ease-out)]"
-        >
-          <p className="font-medium text-white">{claude ? "Claude is interpreting your messages" : "Running without Claude"}</p>
-          <p className="mt-1.5 text-white/60">
-            {claude
-              ? llm.verified
-                ? "Claude reads your request and words the reply. The movies themselves always come from the MovieLens recommender."
-                : "A key is configured. Sending one test message to confirm Claude responds."
-              : (llm.reason ?? "Claude is unavailable.") + " A rule-based parser handles your requests instead, and recommendations work exactly the same."}
-          </p>
-          <p className="mt-3 font-mono text-[11px] text-white/40">
-            {health?.llm.model ? `model: ${health.llm.model}` : "set ANTHROPIC_API_KEY in .env to enable Claude"}
-          </p>
-          <Popover.Arrow className="fill-white/20" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
 
 export { Logo };
 
@@ -115,7 +72,6 @@ export function Nav({ compact = false }: { compact?: boolean }) {
           <NavAction icon={BarChart3} label="Evaluation" href="/evaluation" className="hidden sm:flex" />
           <NavAction icon={FlaskConical} label="NLP Lab" href="/nlp" className="hidden md:flex" />
           <NavAction icon={Info} label="Project" active={project.open} onClick={() => openProject("about")} />
-          {!compact && <ModeBadge />}
           {!compact && messages.length > 0 && (
             <button
               type="button"

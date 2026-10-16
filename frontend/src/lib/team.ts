@@ -50,7 +50,7 @@ const DEFAULT_TEAM: TeamMember[] = [
 
 const DEFAULT_INFO: ProjectInfo = {
   college: "Dwarkadas J. Sanghvi College of Engineering",
-  course: "Recommendation Systems Laboratory (DJS23SPE301L)",
+  course: "Natural Language Processing Laboratory (DJS23SPC302L)",
   guide: "Prof. Dashrath Kale",
   session: "Semester V · AI & Data Science",
   guidePhoto: "/team/guide.jpg",

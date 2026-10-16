@@ -8,10 +8,10 @@ import { useWorkspaceOptional } from "./WorkspaceProvider";
 import { openProject } from "@/lib/project";
 import { cn } from "@/lib/utils";
 
-const LABEL = "RS MINI PROJECT";
+const LABEL = "NLP MINI PROJECT";
 
 /**
- * The "RS MINI PROJECT" mark, now at the top of the home page instead of the crowded navbar.
+ * The "NLP MINI PROJECT" mark, now at the top of the home page instead of the crowded navbar.
  * It alternates (every few seconds, with a decrypt effect from React Bits) between the project name and the real dataset numbers.
  * Clicking it opens the Project dialog. Reduced-motion users get plain static text.
  */
@@ -36,7 +36,7 @@ export function ProjectEyebrow({ className }: { className?: string }) {
     <button
       type="button"
       onClick={() => openProject("about")}
-      aria-label="About this project: RS Mini Project"
+      aria-label="About this project: NLP Mini Project"
       className={cn(
         "glass-pill press group/eyebrow inline-flex items-center justify-center gap-2.5 rounded-full px-4 py-2 sm:gap-3 sm:px-5",
         "hover:border-white/45",

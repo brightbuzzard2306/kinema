@@ -219,7 +219,7 @@ export function ProjectDialog() {
                 <span className="absolute inset-0 rounded-full bg-white" />
                 {!reduce && <span className="absolute inset-0 rounded-full bg-white" style={{ animation: "pulse-ring 2.6s ease-out infinite" }} />}
               </span>
-              <MorphText text="RS MINI PROJECT" width={15} intro className="text-[11px]" />
+              <MorphText text="NLP MINI PROJECT" width={16} intro className="text-[11px]" />
             </p>
             <Dialog.Close className="glass-pill press grid h-9 w-9 shrink-0 place-items-center rounded-full" aria-label="Close">
               <X className="h-4 w-4" />
