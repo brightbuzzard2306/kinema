@@ -1,6 +1,6 @@
 # NLP experiment: spelling correction of movie titles
 
-Generated: 2026-10-16T03:29:31+00:00 - MovieLens ml-latest-small titles + tags. Every number comes from `python -m scripts.run_nlp_eval` (fixed random seeds).
+Generated: 2026-10-16T04:15:21+00:00 - MovieLens ml-latest-small titles + tags. Every number comes from `python -m scripts.run_nlp_eval` (fixed random seeds).
 
 ## Method
 
@@ -8,6 +8,13 @@ Noisy channel: choose the word sequence w maximising `sum_i log P(x_i|w_i) + log
 Channel `P(x|w) = p_edit^d` with p_edit = 0.02 and Damerau-Levenshtein distance d (max 2); candidates come from a BK-tree;
 the language model is a word bigram model with add-k smoothing (k = 0.05); decoding is Viterbi over the candidate lattice.
 Corpus: 9,742 movie titles (29,019 tokens) plus 1,757 extra known words from genres and user tags.
+
+## Metric definitions
+
+- **Perplexity**: `exp(-average log P(word | previous word))` on unseen titles; lower is better. One unseen word pair with probability 0 makes it infinite.
+- **Word (token) accuracy**: share of test typos where the mistyped word was restored to the right word.
+- **Title accuracy**: share where the whole title came out exactly right (never above word accuracy).
+- **Wrongly changed (false-correction rate)**: share of already-correct titles that a system altered; lower is better.
 
 ## Language model: perplexity (lower is better)
 
@@ -55,6 +62,12 @@ A typo of 1 or 2 edits is injected into one word (length >= 5) of a title, alway
 300 test items per column.
 
 False corrections on 300 clean held-out titles (the share wrongly changed; unseen words look like typos): difflib 0.320, edit distance 0.273, unigram 0.273, bigram 0.277.
+
+## Reading the numbers honestly
+
+- On titles that exist in the catalogue the bigram + Viterbi corrector clearly beats the library baseline.
+- On unseen titles the bigram and unigram systems are within noise of each other (with 300 items each percentage is uncertain by roughly 3-6 points; the website shows 95% Wilson intervals).
+- The typo probability (0.02 per edit) is a chosen setting, not learned. The only trained part is the bigram model.
 
 ## Limitations
 
